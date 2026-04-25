@@ -42,9 +42,6 @@ har-backend/target/
 *.jar
 har-backend/.mvn/wrapper/maven-wrapper.jar
 
-# Models — too large for GitHub (retrain locally)
-# scaler.pkl and Decision_Tree.pkl are small and WILL be committed
-models/*.pkl
-models/*.keras
-!models/scaler.pkl
-!models/Decision_Tree.pkl
+# Models — all sizes acceptable, committed to repo
+# models/*.pkl
+# models/*.keras
