@@ -20,7 +20,7 @@
 
 HAR System classifies 12 human physical activities from body-worn sensor data using 5 trained ML/DL models. Built on the **MHEALTH dataset** (1.2M records, 10 subjects, 50Hz sampling), it features a Spring Boot REST backend, a Python Flask ML inference service, a MySQL persistence layer, and an interactive frontend dashboard.
 
-> _"The body never lies — machines can now read it."_
+> *"The body never lies — machines can now read it."*
 
 ---
 
@@ -91,7 +91,7 @@ Human_Action_Detection/
 │   └── ...
 │
 ├── 📂 results/
-│   └── results.txt                     # Model  evaluation summary
+│   └── results.txt                     # Model evaluation summary
 │
 ├── 📂 har-backend/                     # Spring Boot project
 │   └── src/main/java/com/har/
@@ -112,13 +112,13 @@ Human_Action_Detection/
 
 ## 🤖 Model Performance
 
-| Model                | Accuracy   | F1-Macro   | Train Time |
-| -------------------- | ---------- | ---------- | ---------- |
-| Logistic Regression  | 64.87%     | 60.46%     | 7.9s       |
-| K-Nearest Neighbors  | 97.54%     | 96.89%     | 0.3s       |
-| Decision Tree        | 93.42%     | 92.47%     | 2.2s       |
-| **⭐ Random Forest** | **97.96%** | **97.52%** | 5.2s       |
-| **⭐ 1D CNN**        | **97.93%** | **97.56%** | ~11m       |
+| Model | Accuracy | F1-Macro | Train Time |
+|---|---|---|---|
+| Logistic Regression | 64.87% | 60.46% | 7.9s |
+| K-Nearest Neighbors | 97.54% | 96.89% | 0.3s |
+| Decision Tree | 93.42% | 92.47% | 2.2s |
+| **⭐ Random Forest** | **97.96%** | **97.52%** | 5.2s |
+| **⭐ 1D CNN** | **97.93%** | **97.56%** | ~11m |
 
 > Best accuracy: **Random Forest (97.96%)** · Best F1-Macro: **1D CNN (97.56%)**
 
@@ -128,19 +128,16 @@ Human_Action_Detection/
 
 **MHEALTH (Mobile Health)** — UCI Machine Learning Repository
 
-| Property          | Value                                                                                                             |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Total Records     | ~1.2 Million (after preprocessing)                                                                                |
-| Subjects          | 10 healthy volunteers                                                                                             |
-| Activities        | 12 (standing, sitting, lying, walking, stairs, waist bend, arm raise, crouching, cycling, jogging, running, jump) |
-| Sensors           | Chest accelerometer, chest gyroscope, wrist accelerometer, ankle gyroscope                                        |
-| Sampling Rate     | 50 Hz                                                                                                             |
-| Selected Features | 12 (ALX, ALY, ALZ, GLX, GLY, GLZ, ARX, ARY, ARZ, GRX, GRY, GRZ)                                                   |
+| Property | Value |
+|---|---|
+| Total Records | ~1.2 Million (after preprocessing) |
+| Subjects | 10 healthy volunteers |
+| Activities | 12 (standing, sitting, lying, walking, stairs, waist bend, arm raise, crouching, cycling, jogging, running, jump) |
+| Sensors | Chest accelerometer, chest gyroscope, wrist accelerometer, ankle gyroscope |
+| Sampling Rate | 50 Hz |
+| Selected Features | 12 (ALX, ALY, ALZ, GLX, GLY, GLZ, ARX, ARY, ARZ, GRX, GRY, GRZ) |
 
 ---
-
-> ⚠️ **Note:** Large model files (Random Forest, KNN, CNN) are not included in this repo due to GitHub size limits.
-> Retrain them by running `03_models.py` and `04_cnn.py` before starting the ML service.
 
 ## 🚀 Getting Started
 
@@ -157,7 +154,7 @@ Human_Action_Detection/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Human_Action_Detection.git
+git clone https://github.com/ananya-7123/Human-Activity-Recognition.git
 cd Human_Action_Detection
 ```
 
@@ -174,7 +171,6 @@ python ml_service.py
 ```
 
 Verify it's running:
-
 ```
 http://localhost:5000/health
 ```
@@ -188,7 +184,6 @@ CREATE DATABASE har_db;
 ```
 
 Update `har-backend/src/main/resources/application.properties`:
-
 ```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/har_db
 spring.datasource.username=YOUR_USERNAME
@@ -215,7 +210,6 @@ Backend runs on `http://localhost:8080`
 ### 5. Frontend
 
 Open `frontend/index.html` directly in your browser, or use VS Code Live Server:
-
 ```
 http://127.0.0.1:5500/frontend/index.html
 ```
@@ -226,12 +220,12 @@ http://127.0.0.1:5500/frontend/index.html
 
 ## 🔌 API Endpoints
 
-| Method | Endpoint       | Description                     |
-| ------ | -------------- | ------------------------------- |
+| Method | Endpoint | Description |
+|---|---|---|
 | `POST` | `/api/predict` | Run prediction from sensor data |
-| `GET`  | `/api/history` | Get last 20 predictions         |
-| `GET`  | `/api/stats`   | Activity & model usage stats    |
-| `GET`  | `/api/health`  | Backend health check            |
+| `GET` | `/api/history` | Get last 20 predictions |
+| `GET` | `/api/stats` | Activity & model usage stats |
+| `GET` | `/api/health` | Backend health check |
 
 ### Sample Request
 
@@ -265,22 +259,30 @@ curl -X POST http://localhost:8080/api/predict \
 
 ## 🛠️ Tech Stack
 
-| Layer      | Technology                                                     |
-| ---------- | -------------------------------------------------------------- |
-| Frontend   | HTML5, CSS3, Vanilla JS, Chart.js                              |
-| Backend    | Java 17, Spring Boot 3, Spring Data JPA                        |
-| ML Service | Python, Flask, scikit-learn, TensorFlow                        |
-| Database   | MySQL 8 (via Hibernate ORM)                                    |
-| ML Models  | Logistic Regression, KNN, Decision Tree, Random Forest, 1D CNN |
-| Data       | MHEALTH Dataset (UCI Repository)                               |
+| Layer | Technology |
+|---|---|
+| Frontend | HTML5, CSS3, Vanilla JS, Chart.js |
+| Backend | Java 17, Spring Boot 3, Spring Data JPA |
+| ML Service | Python, Flask, scikit-learn, TensorFlow |
+| Database | MySQL 8 (via Hibernate ORM) |
+| ML Models | Logistic Regression, KNN, Decision Tree, Random Forest, 1D CNN |
+| Data | MHEALTH Dataset (UCI Repository) |
 
 ---
 
 ## 📸 Screenshots
 
-| Dashboard                                        | Analytics                                | Models                         |
-| ------------------------------------------------ | ---------------------------------------- | ------------------------------ |
-| ![Dashboard](outputs/plots/model_comparison.png) | _Analytics page with persistent history_ | _Interactive confusion matrix_ |
+### Dashboard — Live Prediction + KPI Overview
+![Dashboard](assets/dashboard.png)
+
+### Analytics — Persistent Prediction History
+![Analytics](assets/analytics.png)
+
+### Models — Interactive Confusion Matrix + Radar
+![Models](assets/models.png)
+
+### Sensors — Live Waveform Simulation
+![Sensors](assets/sensors.png)
 
 ---
 
@@ -305,8 +307,7 @@ curl -X POST http://localhost:8080/api/predict \
 ## 👤 Author
 
 **Your Name**
-
-- GitHub: [@YOUR_USERNAME](https://github.com/YOUR_USERNAME)
+- GitHub: [@ananya-7123](https://github.com/ananya-7123)
 - LinkedIn: [linkedin.com/in/YOUR_PROFILE](https://linkedin.com/in/YOUR_PROFILE)
 
 ---
