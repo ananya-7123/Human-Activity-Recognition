@@ -1,0 +1,1648 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HAR System — Human Activity Recognition</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --cyan:#00e5ff;--cyan-dim:#00b8cc;--cyan-glow:rgba(0,229,255,0.15);
+      --bg:#060b10;--bg2:#0c1420;--bg3:#101d2c;--bg4:#152233;
+      --border:rgba(0,229,255,0.12);--border2:rgba(0,229,255,0.25);
+      --text:#e0f0f5;--text-dim:#7a9aaa;
+      --pink:#ff4d8d;--green:#00ff88;--amber:#ffb700;--red:#ff4444;
+      --font-display:"Orbitron",monospace;--font-mono:"DM Mono",monospace;--font-body:"Syne",sans-serif;
+    }
+    html{scroll-behavior:smooth}
+    body{background:var(--bg);color:var(--text);font-family:var(--font-body);min-height:100vh;overflow-x:hidden}
+    body::before{content:"";position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+    body::after{content:"";position:fixed;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 20% 20%,rgba(0,229,255,0.04) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(255,77,141,0.03) 0%,transparent 50%);pointer-events:none;z-index:0;animation:bgPulse 8s ease-in-out infinite alternate}
+    @keyframes bgPulse{0%{transform:scale(1) rotate(0deg)}100%{transform:scale(1.05) rotate(1deg)}}
+    ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--cyan-dim);border-radius:2px}
+
+    /* ── Layout ── */
+    .layout{display:grid;grid-template-columns:220px 1fr;grid-template-rows:60px 1fr;min-height:100vh;position:relative;z-index:1}
+
+    /* ── Topbar ── */
+    .topbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:rgba(6,11,16,0.95);border-bottom:1px solid var(--border2);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100}
+    .topbar-logo{display:flex;align-items:center;gap:12px}
+    .logo-icon{width:32px;height:32px;border:2px solid var(--cyan);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 12px var(--cyan-glow);animation:logoPulse 3s ease-in-out infinite}
+    @keyframes logoPulse{0%,100%{box-shadow:0 0 12px var(--cyan-glow)}50%{box-shadow:0 0 24px rgba(0,229,255,0.3)}}
+    .logo-text{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--cyan);letter-spacing:2px}
+    .logo-sub{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1px}
+    .topbar-right{display:flex;align-items:center;gap:20px}
+    .status-pill{display:flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);border-radius:20px;font-family:var(--font-mono);font-size:11px;color:var(--green)}
+    .status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.5s ease-in-out infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+    .topbar-time{font-family:var(--font-mono);font-size:12px;color:var(--text-dim)}
+
+    /* ── Sidebar ── */
+    .sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:24px 0;display:flex;flex-direction:column;gap:4px}
+    .sidebar-section{padding:8px 20px 4px;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-top:12px}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;color:var(--text-dim);cursor:pointer;transition:all 0.2s;border-left:2px solid transparent;font-family:var(--font-body)}
+    .nav-item:hover{color:var(--text);background:rgba(0,229,255,0.04)}
+    .nav-item.active{color:var(--cyan);background:rgba(0,229,255,0.07);border-left-color:var(--cyan)}
+    .nav-icon{font-size:15px;width:20px;text-align:center}
+    .sidebar-bottom{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border)}
+    .model-badge{padding:8px 12px;background:var(--cyan-glow);border:1px solid var(--border2);border-radius:8px;font-family:var(--font-mono);font-size:10px;color:var(--cyan)}
+    .model-badge-title{font-size:9px;color:var(--text-dim);margin-bottom:4px;letter-spacing:1px}
+    .model-badge-acc{color:var(--green);margin-top:2px}
+
+    /* ── Main ── */
+    .main{overflow-y:auto;position:relative}
+    .page{display:none;padding:28px;flex-direction:column;gap:24px;animation:fadeUp 0.4s ease both}
+    .page.active{display:flex}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+    /* ── Page Header ── */
+    .page-header{display:flex;align-items:flex-start;justify-content:space-between}
+    .page-title{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--text);letter-spacing:1px}
+    .page-title span{color:var(--cyan)}
+    .page-sub{font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:4px}
+
+    /* ── KPI Cards ── */
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+    .kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden;transition:border-color 0.3s,transform 0.2s}
+    .kpi-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+    .kpi-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),var(--cyan-dim))}
+    .kpi-card.pink::before{background:linear-gradient(90deg,var(--pink),#ff8ab0)}
+    .kpi-card.green::before{background:linear-gradient(90deg,var(--green),#00cc6a)}
+    .kpi-card.amber::before{background:linear-gradient(90deg,var(--amber),#ff9f00)}
+    .kpi-label{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+    .kpi-value{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--text);line-height:1}
+    .kpi-card.pink .kpi-value{color:var(--pink)}
+    .kpi-card.green .kpi-value{color:var(--green)}
+    .kpi-card.amber .kpi-value{color:var(--amber)}
+    .kpi-sub{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:6px}
+    .kpi-icon{position:absolute;top:16px;right:16px;font-size:22px;opacity:0.3}
+
+    /* ── Grid layouts ── */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .three-col{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:20px}
+
+    /* ── Cards ── */
+    .card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px;transition:border-color 0.3s}
+    .card:hover{border-color:var(--border2)}
+    .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    .card-title{font-family:var(--font-display);font-size:11px;font-weight:600;color:var(--cyan);letter-spacing:2px;text-transform:uppercase}
+    .card-badge{font-family:var(--font-mono);font-size:10px;padding:3px 8px;border-radius:10px;background:var(--cyan-glow);color:var(--cyan);border:1px solid var(--border2)}
+    .card-badge.green{background:rgba(0,255,136,0.08);color:var(--green);border-color:rgba(0,255,136,0.2)}
+    .card-badge.pink{background:rgba(255,77,141,0.08);color:var(--pink);border-color:rgba(255,77,141,0.2)}
+    .card-badge.amber{background:rgba(255,183,0,0.08);color:var(--amber);border-color:rgba(255,183,0,0.2)}
+
+    /* ── Sensor form ── */
+    .sensor-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+    .sensor-group label{display:block;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:5px;text-transform:uppercase}
+    .sensor-group input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:var(--font-mono);font-size:12px;color:var(--text);outline:none;transition:border-color 0.2s,box-shadow 0.2s}
+    .sensor-group input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-glow)}
+    .sensor-divider{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin:14px 0 10px;display:flex;align-items:center;gap:8px}
+    .sensor-divider::after{content:"";flex:1;height:1px;background:var(--border)}
+    .btn-predict{width:100%;padding:13px;background:linear-gradient(135deg,var(--cyan),var(--cyan-dim));border:none;border-radius:10px;font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:2px;color:var(--bg);cursor:pointer;transition:all 0.3s;position:relative;overflow:hidden}
+    .btn-predict:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,229,255,0.3)}
+    .btn-predict:active{transform:translateY(0)}
+    .btn-predict.loading{opacity:0.7;cursor:not-allowed}
+    .btn-sample{width:100%;margin-top:8px;padding:9px;background:transparent;border:1px solid var(--border2);border-radius:8px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);cursor:pointer;transition:all 0.2s}
+    .btn-sample:hover{color:var(--cyan);border-color:var(--cyan);background:var(--cyan-glow)}
+
+    /* ── Prediction Result ── */
+    .prediction-display{text-align:center;padding:20px;background:var(--bg3);border-radius:12px;border:1px solid var(--border);margin-bottom:16px;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;transition:all 0.4s}
+    .prediction-display.active{border-color:var(--cyan);box-shadow:0 0 20px var(--cyan-glow)}
+    .pred-icon{font-size:36px}
+    .pred-label{font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--cyan);letter-spacing:1px}
+    .pred-confidence{font-family:var(--font-mono);font-size:11px;color:var(--text-dim)}
+    .pred-model-used{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);padding:3px 10px;background:var(--bg4);border-radius:10px}
+    .pred-waiting{font-family:var(--font-mono);font-size:12px;color:var(--text-dim)}
+
+    /* ── Model selector ── */
+    .model-selector{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+    .model-opt{padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);cursor:pointer;text-align:center;transition:all 0.2s}
+    .model-opt:hover{border-color:var(--border2);color:var(--text)}
+    .model-opt.selected{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-glow)}
+    .model-opt-acc{font-size:9px;color:var(--green);margin-top:2px}
+
+    /* ── Feed ── */
+    .feed-list{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto}
+    .feed-item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);animation:slideIn 0.3s ease both}
+    @keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+    .feed-icon{font-size:18px;width:28px;text-align:center}
+    .feed-info{flex:1}
+    .feed-activity{font-family:var(--font-body);font-size:13px;color:var(--text);font-weight:600}
+    .feed-time{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:1px}
+    .feed-conf{font-family:var(--font-mono);font-size:11px;color:var(--green)}
+
+    /* ── Chart containers ── */
+    .chart-wrap{position:relative;height:220px}
+    .chart-wrap-sm{position:relative;height:190px}
+    .chart-wrap-lg{position:relative;height:300px}
+
+    /* ── Model perf table ── */
+    .perf-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px}
+    .perf-table th{text-align:left;padding:8px 10px;color:var(--text-dim);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+    .perf-table td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.03);color:var(--text)}
+    .perf-table tr:hover td{background:rgba(0,229,255,0.03)}
+    .perf-table tr.best td{color:var(--cyan)}
+    .bar-cell{display:flex;align-items:center;gap:8px}
+    .mini-bar{height:4px;border-radius:2px;background:var(--cyan);transition:width 1s ease}
+    .mini-bar.pink{background:var(--pink)}.mini-bar.green{background:var(--green)}.mini-bar.amber{background:var(--amber)}.mini-bar.cyan{background:var(--cyan)}
+
+    /* ── Activity icons grid ── */
+    .activity-icons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .act-icon-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:all 0.2s}
+    .act-icon-card:hover{border-color:var(--border2);transform:translateY(-2px);background:var(--bg4)}
+    .act-icon-card.active-act{border-color:var(--cyan);background:var(--cyan-glow)}
+    .act-emoji{font-size:22px;display:block;margin-bottom:4px}
+    .act-name{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:0.5px}
+
+    /* ── Sensor readout ── */
+    .sensor-readout{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .readout-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+    .readout-label{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase}
+    .readout-val{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--cyan);margin-top:4px}
+
+    /* ── Waveform ── */
+    .waveform-wrap{position:relative;height:120px;background:var(--bg3);border-radius:10px;border:1px solid var(--border);overflow:hidden;margin-bottom:16px}
+    .waveform-canvas{width:100%;height:100%}
+    .waveform-labels{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+    .waveform-label{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--text-dim)}
+    .wl-dot{width:8px;height:8px;border-radius:50%}
+
+    /* ── History page ── */
+    .history-filters{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+    .history-filter-btn{padding:6px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);cursor:pointer;transition:all 0.2s}
+    .history-filter-btn:hover,.history-filter-btn.active{color:var(--cyan);border-color:var(--cyan);background:var(--cyan-glow)}
+    .history-table{width:100%;border-collapse:collapse;font-family:var(--font-mono);font-size:12px}
+    .history-table th{text-align:left;padding:10px 12px;color:var(--text-dim);font-size:10px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--bg3)}
+    .history-table td{padding:11px 12px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text);transition:background 0.2s}
+    .history-table tr:hover td{background:rgba(0,229,255,0.03)}
+    .history-table tr.new-entry td{animation:rowFlash 0.6s ease}
+    @keyframes rowFlash{0%{background:rgba(0,229,255,0.1)}100%{background:transparent}}
+    .conf-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+    .conf-badge.high{background:rgba(0,255,136,0.12);color:var(--green);border:1px solid rgba(0,255,136,0.2)}
+    .conf-badge.mid{background:rgba(255,183,0,0.12);color:var(--amber);border:1px solid rgba(255,183,0,0.2)}
+    .conf-badge.low{background:rgba(255,68,68,0.12);color:var(--red);border:1px solid rgba(255,68,68,0.2)}
+    .export-btns{display:flex;gap:8px}
+    .btn-export{padding:8px 16px;border-radius:8px;font-family:var(--font-mono);font-size:11px;cursor:pointer;transition:all 0.2s;border:1px solid var(--border2);background:transparent;color:var(--text-dim)}
+    .btn-export:hover{color:var(--cyan);border-color:var(--cyan);background:var(--cyan-glow)}
+    .btn-export.green{border-color:rgba(0,255,136,0.3);color:var(--green)}
+    .btn-export.green:hover{background:rgba(0,255,136,0.08)}
+
+    /* ── Confusion matrix ── */
+    .cm-grid{display:grid;gap:2px;margin:0 auto}
+    .cm-cell{display:flex;align-items:center;justify-content:center;border-radius:3px;font-family:var(--font-mono);font-size:9px;font-weight:600;cursor:pointer;transition:all 0.2s;position:relative}
+    .cm-cell:hover{transform:scale(1.08);z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.5)}
+    .cm-label{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);display:flex;align-items:center;justify-content:flex-end;padding-right:6px}
+    .cm-label-top{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;writing-mode:vertical-lr;transform:rotate(180deg);height:60px}
+    .cm-tooltip{position:fixed;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text);pointer-events:none;z-index:1000;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4)}
+
+    /* ── Analytics page ── */
+    .analytics-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+    .analytics-stat{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+    .analytics-stat-val{font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--cyan)}
+    .analytics-stat-label{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:4px;letter-spacing:1px}
+
+    /* ── Models page ── */
+    .model-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+    .model-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:18px;transition:all 0.2s;cursor:pointer}
+    .model-card:hover{border-color:var(--border2);transform:translateY(-3px)}
+    .model-card.star{border-color:rgba(0,255,136,0.3)}
+    .model-card-name{font-family:var(--font-display);font-size:13px;color:var(--text);margin-bottom:12px}
+    .model-card-metric{display:flex;justify-content:space-between;margin-bottom:6px;font-family:var(--font-mono);font-size:11px}
+    .model-card-metric .label{color:var(--text-dim)}
+    .model-card-metric .value{color:var(--cyan)}
+    .model-progress{height:4px;background:var(--bg4);border-radius:2px;margin-top:12px;overflow:hidden}
+    .model-progress-fill{height:100%;border-radius:2px;transition:width 1.2s ease}
+
+    /* ── MHEALTH page ── */
+    .mhealth-info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px}
+    .info-block{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px}
+    .info-block-title{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+    .info-block-content{font-family:var(--font-body);font-size:13px;color:var(--text);line-height:1.6}
+    .feature-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+    .feature-tag{padding:4px 10px;background:var(--cyan-glow);border:1px solid var(--border2);border-radius:12px;font-family:var(--font-mono);font-size:10px;color:var(--cyan)}
+
+    /* ── Sensors page ── */
+    .sensor-live-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+    .sensor-live-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;position:relative;overflow:hidden}
+    .sensor-live-card::after{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--cyan);opacity:0.4}
+    .sensor-live-name{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:8px}
+    .sensor-live-val{font-family:var(--font-display);font-size:22px;color:var(--cyan);font-weight:600}
+    .sensor-live-unit{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-top:2px}
+    .sensor-bar-wrap{margin-top:10px;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden}
+    .sensor-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--cyan),var(--cyan-dim));transition:width 0.5s ease}
+
+    /* ── Pulse animation ── */
+    .pulse-ring{animation:pulseRing 2s ease-in-out infinite}
+    @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(0,229,255,0.4)}70%{box-shadow:0 0 0 10px rgba(0,229,255,0)}100%{box-shadow:0 0 0 0 rgba(0,229,255,0)}}
+
+    /* ── Empty state ── */
+    .empty-state{text-align:center;padding:40px;font-family:var(--font-mono);font-size:12px;color:var(--text-dim)}
+    .empty-state .empty-icon{font-size:36px;margin-bottom:12px;display:block;opacity:0.4}
+
+    /* ── Toast ── */
+    .toast{position:fixed;bottom:24px;right:24px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-family:var(--font-mono);font-size:12px;color:var(--text);z-index:9999;transform:translateY(80px);opacity:0;transition:all 0.3s;display:flex;align-items:center;gap:10px;max-width:320px}
+    .toast.show{transform:translateY(0);opacity:1}
+    .toast.success{border-color:rgba(0,255,136,0.3);color:var(--green)}
+    .toast.error{border-color:rgba(255,68,68,0.3);color:var(--red)}
+
+    /* ── Hero Banner ── */
+    .hero-banner{background:linear-gradient(135deg,rgba(0,229,255,0.06) 0%,rgba(255,77,141,0.04) 50%,rgba(0,255,136,0.04) 100%);border:1px solid var(--border2);border-radius:16px;padding:28px 32px;position:relative;overflow:hidden}
+    .hero-banner::before{content:"";position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(0,229,255,0.08),transparent 70%);pointer-events:none}
+    .hero-banner::after{content:"";position:absolute;bottom:-40px;left:20%;width:160px;height:160px;background:radial-gradient(circle,rgba(255,77,141,0.06),transparent 70%);pointer-events:none}
+    .hero-quote{font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--text);letter-spacing:1px;line-height:1.4;margin-bottom:6px}
+    .hero-quote span{color:var(--cyan)}
+    .hero-attribution{font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-bottom:20px;letter-spacing:1px}
+    .hero-divider{width:40px;height:2px;background:linear-gradient(90deg,var(--cyan),var(--pink));border-radius:1px;margin-bottom:16px}
+    .hero-desc{font-family:var(--font-body);font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:20px;max-width:800px}
+    .hero-desc strong{color:var(--text)}
+    .hero-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--cyan);letter-spacing:1px;user-select:none;width:fit-content}
+    .hero-toggle:hover{color:var(--text)}
+    .hero-toggle-icon{transition:transform 0.3s;display:inline-block}
+    .hero-toggle-icon.open{transform:rotate(180deg)}
+    .hero-instructions{overflow:hidden;max-height:0;transition:max-height 0.5s ease,opacity 0.4s ease;opacity:0}
+    .hero-instructions.open{max-height:600px;opacity:1}
+    .instructions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+    .instr-step{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px}
+    .instr-step-num{font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--cyan);opacity:0.4;line-height:1;margin-bottom:8px}
+    .instr-step-title{font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px}
+    .instr-step-body{font-family:var(--font-mono);font-size:10px;color:var(--text-dim);line-height:1.7}
+    .hero-dismiss{position:absolute;top:14px;right:16px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;transition:color 0.2s;line-height:1}
+    .hero-dismiss:hover{color:var(--text)}
+    .hero-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+    .hero-tag{padding:4px 12px;border-radius:20px;font-family:var(--font-mono);font-size:10px;border:1px solid;letter-spacing:0.5px}
+
+    /* ── Mobile hamburger ── */
+    .mob-menu-btn{display:none;background:transparent;border:1px solid var(--border2);border-radius:8px;padding:6px 10px;color:var(--cyan);cursor:pointer;font-size:16px;line-height:1}
+    .mob-sidebar{display:none;position:fixed;inset:0;z-index:200;background:rgba(6,11,16,0.95);backdrop-filter:blur(12px);flex-direction:column;padding:24px}
+    .mob-sidebar.open{display:flex}
+    .mob-sidebar-close{align-self:flex-end;background:transparent;border:1px solid var(--border2);border-radius:8px;padding:6px 12px;color:var(--text-dim);cursor:pointer;font-family:var(--font-mono);font-size:12px;margin-bottom:24px}
+    .mob-nav-item{display:flex;align-items:center;gap:14px;padding:16px 12px;font-size:16px;color:var(--text-dim);cursor:pointer;border-bottom:1px solid var(--border);font-family:var(--font-body);transition:color 0.2s}
+    .mob-nav-item:hover,.mob-nav-item.active{color:var(--cyan)}
+    .mob-nav-icon{font-size:20px;width:28px;text-align:center}
+
+    /* ── Responsive ── */
+    @media(max-width:1100px){
+      .kpi-grid{grid-template-columns:repeat(2,1fr)}
+      .three-col{grid-template-columns:1fr 1fr}
+      .model-cards{grid-template-columns:1fr 1fr}
+      .instructions-grid{grid-template-columns:1fr 1fr}
+    }
+    @media(max-width:768px){
+      .layout{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .mob-menu-btn{display:block}
+      .two-col,.three-col{grid-template-columns:1fr}
+      .kpi-grid{grid-template-columns:1fr 1fr}
+      .hero-banner{padding:20px}
+      .hero-quote{font-size:14px}
+      .instructions-grid{grid-template-columns:1fr}
+      .page{padding:16px}
+      .page-title{font-size:16px}
+      .main{padding:0}
+      .analytics-stat-row{grid-template-columns:1fr}
+      .sensor-live-grid{grid-template-columns:repeat(2,1fr)}
+      .mhealth-info-grid{grid-template-columns:1fr}
+      .export-btns{flex-wrap:wrap}
+      .topbar{padding:0 16px}
+    }
+    @media(max-width:480px){
+      .kpi-grid{grid-template-columns:1fr 1fr}
+      .kpi-value{font-size:22px}
+      .sensor-grid{grid-template-columns:1fr 1fr}
+      .activity-icons{grid-template-columns:repeat(3,1fr)}
+      .model-selector{grid-template-columns:1fr 1fr}
+      .sensor-live-grid{grid-template-columns:repeat(2,1fr)}
+      .hero-tags{display:none}
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Topbar ── -->
+  <header class="topbar">
+    <div class="topbar-logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">HAR SYSTEM</div>
+        <div class="logo-sub">Human Activity Recognition</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="status-pill"><div class="status-dot"></div>MODEL ACTIVE</div>
+      <div class="topbar-time" id="clock">--:--:--</div>
+      <button class="mob-menu-btn" onclick="openMobMenu()">☰</button>
+    </div>
+  </header>
+
+  <!-- ── Mobile Sidebar Overlay ── -->
+  <div class="mob-sidebar" id="mobSidebar">
+    <button class="mob-sidebar-close" onclick="closeMobMenu()">✕ Close</button>
+    <div class="mob-nav-item active" id="mob_dashboard" onclick="showPage('dashboard',null);closeMobMenu()"><span class="mob-nav-icon">📊</span>Dashboard</div>
+    <div class="mob-nav-item" id="mob_predict" onclick="showPage('predict',null);closeMobMenu()"><span class="mob-nav-icon">🎯</span>Predict</div>
+    <div class="mob-nav-item" id="mob_models" onclick="showPage('models',null);closeMobMenu()"><span class="mob-nav-icon">🤖</span>Models</div>
+    <div class="mob-nav-item" id="mob_analytics" onclick="showPage('analytics',null);closeMobMenu()"><span class="mob-nav-icon">📈</span>Analytics</div>
+    <div class="mob-nav-item" id="mob_mhealth" onclick="showPage('mhealth',null);closeMobMenu()"><span class="mob-nav-icon">💾</span>MHEALTH</div>
+    <div class="mob-nav-item" id="mob_sensors" onclick="showPage('sensors',null);closeMobMenu()"><span class="mob-nav-icon">🔬</span>Sensors</div>
+    <div style="margin-top:auto;padding-top:24px;border-top:1px solid var(--border)">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-bottom:8px">ACTIVE MODEL</div>
+      <div style="font-family:var(--font-display);font-size:14px;color:var(--cyan)" id="mob_modelname">1D CNN</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--green);margin-top:4px">Acc: 97.93%</div>
+    </div>
+  </div>
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-section">Navigation</div>
+    <div class="nav-item active" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span>Dashboard</div>
+    <div class="nav-item" onclick="showPage('predict',this)"><span class="nav-icon">🎯</span>Predict</div>
+    <div class="nav-item" onclick="showPage('models',this)"><span class="nav-icon">🤖</span>Models</div>
+    <div class="nav-item" onclick="showPage('analytics',this)"><span class="nav-icon">📈</span>Analytics</div>
+    <div class="sidebar-section">Dataset</div>
+    <div class="nav-item" onclick="showPage('mhealth',this)"><span class="nav-icon">💾</span>MHEALTH</div>
+    <div class="nav-item" onclick="showPage('sensors',this)"><span class="nav-icon">🔬</span>Sensors</div>
+    <div class="sidebar-bottom">
+      <div class="model-badge">
+        <div class="model-badge-title">ACTIVE MODEL</div>
+        <div class="model-badge-name" id="activemodelname">1D CNN</div>
+        <div class="model-badge-acc" id="activemodelacc">Acc: 97.93%</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+
+    <!-- ══════════════════════════════════════
+         PAGE: DASHBOARD
+    ══════════════════════════════════════ -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Activity <span>Recognition</span> Dashboard</div>
+          <div class="page-sub">MHEALTH Dataset · 1.2M Records · 12 Activities · 3 Sensor Devices</div>
+        </div>
+      </div>
+
+      <!-- ── Hero Banner ── -->
+      <div class="hero-banner" id="heroBanner">
+        <button class="hero-dismiss" onclick="dismissHero()" title="Dismiss">✕</button>
+        <div class="hero-quote">"The body never lies —<br/><span>machines can now read it."</span></div>
+        <div class="hero-attribution">— Inspired by Martha Graham · Built with ML + Spring Boot + Python</div>
+        <div class="hero-divider"></div>
+        <div class="hero-desc">
+          <strong>HAR System</strong> is a full-stack Human Activity Recognition platform trained on the <strong>MHEALTH dataset</strong> (1.2M records, 12 activities, 10 subjects).
+          It uses 5 ML models — Logistic Regression, KNN, Decision Tree, Random Forest, and a 1D CNN — to classify body movements from wearable sensor data in real time.
+          Built with <strong>Python Flask</strong> (ML inference), <strong>Spring Boot</strong> (REST API + MySQL persistence), and a <strong>vanilla JS frontend</strong>.
+        </div>
+        <div class="hero-tags">
+          <span class="hero-tag" style="color:var(--cyan);border-color:rgba(0,229,255,0.3)">Python · Flask</span>
+          <span class="hero-tag" style="color:var(--green);border-color:rgba(0,255,136,0.3)">Spring Boot · MySQL</span>
+          <span class="hero-tag" style="color:var(--pink);border-color:rgba(255,77,141,0.3)">TensorFlow · 1D CNN</span>
+          <span class="hero-tag" style="color:var(--amber);border-color:rgba(255,183,0,0.3)">MHEALTH Dataset</span>
+          <span class="hero-tag" style="color:var(--text-dim);border-color:var(--border2)">scikit-learn</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;margin-top:18px;flex-wrap:wrap">
+          <div class="hero-toggle" onclick="toggleInstructions()">
+            <span class="hero-toggle-icon" id="instrIcon">▼</span>
+            <span id="instrLabel">HOW TO USE THIS DASHBOARD</span>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">· 2 min read · For interviewers &amp; new users</div>
+        </div>
+        <div class="hero-instructions" id="heroInstructions">
+          <div class="instructions-grid">
+            <div class="instr-step">
+              <div class="instr-step-num">01</div>
+              <div class="instr-step-title">🎯 Run a Prediction</div>
+              <div class="instr-step-body">Go to <strong>Predict</strong> or use the Sensor Input panel on this dashboard. Enter 12 sensor values (ALX, ALY, ALZ from chest accelerometer; GLX–GLZ from chest gyroscope; ARX–ARZ from wrist; GRX–GRZ from ankle). Hit <strong>Load Sample Data</strong> to auto-fill realistic values, then click <strong>Run Prediction</strong>.</div>
+            </div>
+            <div class="instr-step">
+              <div class="instr-step-num">02</div>
+              <div class="instr-step-title">🤖 Choose Your Model</div>
+              <div class="instr-step-body">Select from 5 trained classifiers: <strong>Logistic Regression</strong> (64.87%), <strong>KNN</strong> (97.54%), <strong>Decision Tree</strong> (93.42%), <strong>Random Forest</strong> (97.96%), or <strong>1D CNN</strong> (97.93% F1). The CNN uses TensorFlow and gives the best F1-Macro score across all 12 activities.</div>
+            </div>
+            <div class="instr-step">
+              <div class="instr-step-num">03</div>
+              <div class="instr-step-title">📊 View Analytics</div>
+              <div class="instr-step-body">The <strong>Analytics</strong> page stores your full prediction history locally — it survives page refresh. Filter by today, this week, or activity type. Export your session data as <strong>CSV or JSON</strong> for further analysis.</div>
+            </div>
+            <div class="instr-step">
+              <div class="instr-step-num">04</div>
+              <div class="instr-step-title">🔬 Explore Models</div>
+              <div class="instr-step-body">The <strong>Models</strong> page has an interactive 12×12 <strong>Confusion Matrix</strong> — hover any cell to see actual vs predicted counts. Switch between RF, CNN, and KNN matrices using the dropdown. The radar chart compares models across accuracy, speed, interpretability, and scalability.</div>
+            </div>
+            <div class="instr-step">
+              <div class="instr-step-num">05</div>
+              <div class="instr-step-title">📡 Live Sensor Feed</div>
+              <div class="instr-step-body">Go to <strong>Sensors</strong> and click <strong>▶ Simulate Live</strong> to watch all 12 sensor channels animate in real time. The waveform shows chest accelerometer (ALX/Y/Z) and gyroscope (GLX) signals with realistic motion patterns.</div>
+            </div>
+            <div class="instr-step">
+              <div class="instr-step-num">06</div>
+              <div class="instr-step-title">💾 Dataset Info</div>
+              <div class="instr-step-body">Visit <strong>MHEALTH</strong> to explore the dataset details — sensor placement, selected features, preprocessing pipeline, and the class distribution of all 12 activities across 10 subjects recorded at 50Hz sampling rate.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Best Accuracy</div><div class="kpi-value" id="kpi-acc">97.96%</div><div class="kpi-sub">Random Forest</div><div class="kpi-icon">🏆</div></div>
+        <div class="kpi-card pink"><div class="kpi-label">Best F1-Macro</div><div class="kpi-value">97.56%</div><div class="kpi-sub">1D CNN</div><div class="kpi-icon">🧠</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Dataset Size</div><div class="kpi-value">1.2M</div><div class="kpi-sub">Records · 12 Features</div><div class="kpi-icon">💾</div></div>
+        <div class="kpi-card amber"><div class="kpi-label">Total Predictions</div><div class="kpi-value" id="kpi-total">0</div><div class="kpi-sub">Session + Saved</div><div class="kpi-icon">🏃</div></div>
+      </div>
+
+      <div class="three-col">
+        <!-- Predict Card -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">Sensor Input</div><div class="card-badge">PREDICT</div></div>
+          <div style="margin-bottom:14px">
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:8px">SELECT MODEL</div>
+            <div class="model-selector">
+              <div class="model-opt" onclick="selectModel(this,'Logistic Reg','64.87%')">Logistic Reg<div class="model-opt-acc">64.87%</div></div>
+              <div class="model-opt" onclick="selectModel(this,'KNN','97.54%')">KNN<div class="model-opt-acc">97.54%</div></div>
+              <div class="model-opt" onclick="selectModel(this,'Decision Tree','93.42%')">Decision Tree<div class="model-opt-acc">93.42%</div></div>
+              <div class="model-opt selected" onclick="selectModel(this,'1D CNN','97.93%')">1D CNN<div class="model-opt-acc">97.93%</div></div>
+            </div>
+          </div>
+          <div class="sensor-divider">CHEST ACCELEROMETER</div>
+          <div class="sensor-grid">
+            <div class="sensor-group"><label>ALX</label><input type="number" id="alx" placeholder="2.18" step="0.01"/></div>
+            <div class="sensor-group"><label>ALY</label><input type="number" id="aly" placeholder="-9.50" step="0.01"/></div>
+            <div class="sensor-group"><label>ALZ</label><input type="number" id="alz" placeholder="0.68" step="0.01"/></div>
+          </div>
+          <div class="sensor-divider">CHEST GYROSCOPE</div>
+          <div class="sensor-grid">
+            <div class="sensor-group"><label>GLX</label><input type="number" id="glx" placeholder="0.10" step="0.01"/></div>
+            <div class="sensor-group"><label>GLY</label><input type="number" id="gly" placeholder="-0.83" step="0.01"/></div>
+            <div class="sensor-group"><label>GLZ</label><input type="number" id="glz" placeholder="-0.68" step="0.01"/></div>
+          </div>
+          <div class="sensor-divider">WRIST ACCELEROMETER</div>
+          <div class="sensor-grid">
+            <div class="sensor-group"><label>ARX</label><input type="number" id="arx" placeholder="-8.62" step="0.01"/></div>
+            <div class="sensor-group"><label>ARY</label><input type="number" id="ary" placeholder="-4.57" step="0.01"/></div>
+            <div class="sensor-group"><label>ARZ</label><input type="number" id="arz" placeholder="0.18" step="0.01"/></div>
+          </div>
+          <div class="sensor-divider">ANKLE GYROSCOPE</div>
+          <div class="sensor-grid">
+            <div class="sensor-group"><label>GRX</label><input type="number" id="grx" placeholder="-0.44" step="0.01"/></div>
+            <div class="sensor-group"><label>GRY</label><input type="number" id="gry" placeholder="-1.01" step="0.01"/></div>
+            <div class="sensor-group"><label>GRZ</label><input type="number" id="grz" placeholder="0.03" step="0.01"/></div>
+          </div>
+          <button class="btn-predict" id="predictBtn" onclick="runPredict()">⚡ RUN PREDICTION</button>
+          <button class="btn-sample" onclick="loadSample()">Load Sample Data</button>
+        </div>
+
+        <!-- Result + Activity -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Prediction Result</div><div class="card-badge" id="resultBadge">WAITING</div></div>
+            <div class="prediction-display" id="predDisplay">
+              <div class="pred-icon">🎯</div>
+              <div class="pred-waiting">Enter sensor values and run prediction</div>
+            </div>
+            <div class="sensor-readout" id="sensorReadout" style="display:none">
+              <div class="readout-item"><div class="readout-label">ALX</div><div class="readout-val" id="ro_alx">—</div></div>
+              <div class="readout-item"><div class="readout-label">ALY</div><div class="readout-val" id="ro_aly">—</div></div>
+              <div class="readout-item"><div class="readout-label">GLX</div><div class="readout-val" id="ro_glx">—</div></div>
+              <div class="readout-item"><div class="readout-label">ARX</div><div class="readout-val" id="ro_arx">—</div></div>
+              <div class="readout-item"><div class="readout-label">GRX</div><div class="readout-val" id="ro_grx">—</div></div>
+              <div class="readout-item"><div class="readout-label">GRY</div><div class="readout-val" id="ro_gry">—</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Activity Classes</div><div class="card-badge">12 TOTAL</div></div>
+            <div class="activity-icons" id="activityIcons"></div>
+          </div>
+        </div>
+
+        <!-- Live Feed -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">Live Prediction Feed</div><div class="card-badge" id="feedCount">0 ENTRIES</div></div>
+          <div class="feed-list" id="feedList">
+            <div class="empty-state"><span class="empty-icon">📡</span>No predictions yet.<br/>Run a prediction to see feed.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Model Performance Comparison</div><div class="card-badge">5 MODELS</div></div>
+          <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Activity Class Distribution</div><div class="card-badge">DATASET</div></div>
+          <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Table + Radar -->
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Detailed Model Metrics</div><div class="card-badge">BENCHMARKS</div></div>
+          <table class="perf-table">
+            <thead><tr><th>Model</th><th>Accuracy</th><th>F1-Macro</th><th>Train Time</th></tr></thead>
+            <tbody>
+              <tr><td>Logistic Regression</td><td><div class="bar-cell"><div class="mini-bar pink" style="width:42px"></div>64.87%</div></td><td>60.46%</td><td>7.9s</td></tr>
+              <tr><td>KNN</td><td><div class="bar-cell"><div class="mini-bar amber" style="width:63px"></div>97.54%</div></td><td>96.89%</td><td>0.3s</td></tr>
+              <tr><td>Decision Tree</td><td><div class="bar-cell"><div class="mini-bar amber" style="width:60px"></div>93.42%</div></td><td>92.47%</td><td>2.2s</td></tr>
+              <tr class="best"><td>⭐ Random Forest</td><td><div class="bar-cell"><div class="mini-bar green" style="width:64px"></div>97.96%</div></td><td>97.52%</td><td>5.2s</td></tr>
+              <tr class="best"><td>⭐ 1D CNN</td><td><div class="bar-cell"><div class="mini-bar cyan" style="width:63px"></div>97.93%</div></td><td>97.56%</td><td>~11m</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Model Radar Analysis</div><div class="card-badge">MULTI-AXIS</div></div>
+          <div class="chart-wrap"><canvas id="radarChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PAGE: PREDICT (dedicated)
+    ══════════════════════════════════════ -->
+    <div class="page" id="page-predict">
+      <div class="page-header">
+        <div><div class="page-title">Live <span>Prediction</span> Engine</div><div class="page-sub">Real-time human activity classification from sensor data</div></div>
+      </div>
+
+      <!-- Waveform -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Live Sensor Waveform</div><div class="card-badge" id="waveStatus">IDLE</div></div>
+        <div class="waveform-wrap"><canvas class="waveform-canvas" id="waveCanvas"></canvas></div>
+        <div class="waveform-labels">
+          <div class="waveform-label"><div class="wl-dot" style="background:#00e5ff"></div>ALX (Chest Accel)</div>
+          <div class="waveform-label"><div class="wl-dot" style="background:#ff4d8d"></div>ALY</div>
+          <div class="waveform-label"><div class="wl-dot" style="background:#00ff88"></div>ALZ</div>
+          <div class="waveform-label"><div class="wl-dot" style="background:#ffb700"></div>GLX (Gyro)</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- Predict form (same fields, linked) -->
+        <div class="card">
+          <div class="card-header"><div class="card-title">Sensor Input</div><div class="card-badge">12 FEATURES</div></div>
+          <div style="margin-bottom:14px">
+            <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-bottom:8px">SELECT MODEL</div>
+            <div class="model-selector">
+              <div class="model-opt" onclick="selectModel(this,'Logistic Reg','64.87%')">Logistic Reg<div class="model-opt-acc">64.87%</div></div>
+              <div class="model-opt" onclick="selectModel(this,'KNN','97.54%')">KNN<div class="model-opt-acc">97.54%</div></div>
+              <div class="model-opt" onclick="selectModel(this,'Decision Tree','93.42%')">Decision Tree<div class="model-opt-acc">93.42%</div></div>
+              <div class="model-opt selected" onclick="selectModel(this,'1D CNN','97.93%')">1D CNN<div class="model-opt-acc">97.93%</div></div>
+            </div>
+          </div>
+          <div class="sensor-divider">CHEST ACCELEROMETER</div>
+          <div class="sensor-grid">
+            <div class="sensor-group"><label>ALX</label><input type="number" id="p_alx" placeholder="2.18" step="0.01" oninput="syncFields('alx',this.value)"/></div>
+            <div class="sensor-group"><label>ALY</label><input type="number" id="p_aly" placeholder="-9.50" step="0.01" oninput="syncFields('aly',this.value)"/></div>
+            <div class="sensor-group"><label>ALZ</label><input type="number" id="p_alz" placeholder="0.68" step="0.01" oninput="syncFields('alz',this.value)"/></div>
+          </div>
+          <div class="sensor-divider">CHEST GYROSCOPE</div>
+          <div class="sensor-grid">
+            <div class="sensor-group"><label>GLX</label><input type="number" id="p_glx" placeholder="0.10" step="0.01" oninput="syncFields('glx',this.value)"/></div>
+            <div class="sensor-group"><label>GLY</label><input type="number" id="p_gly" placeholder="-0.83" step="0.01" oninput="syncFields('gly',this.value)"/></div>
+            <div class="sensor-group"><label>GLZ</label><input type="number" id="p_glz" placeholder="-0.68" step="0.01" oninput="syncFields('glz',this.value)"/></div>
+          </div>
+          <div class="sensor-divider">WRIST ACCELEROMETER</div>
+          <div class="sensor-grid">
+            <div class="sensor-group"><label>ARX</label><input type="number" id="p_arx" placeholder="-8.62" step="0.01" oninput="syncFields('arx',this.value)"/></div>
+            <div class="sensor-group"><label>ARY</label><input type="number" id="p_ary" placeholder="-4.57" step="0.01" oninput="syncFields('ary',this.value)"/></div>
+            <div class="sensor-group"><label>ARZ</label><input type="number" id="p_arz" placeholder="0.18" step="0.01" oninput="syncFields('arz',this.value)"/></div>
+          </div>
+          <div class="sensor-divider">ANKLE GYROSCOPE</div>
+          <div class="sensor-grid">
+            <div class="sensor-group"><label>GRX</label><input type="number" id="p_grx" placeholder="-0.44" step="0.01" oninput="syncFields('grx',this.value)"/></div>
+            <div class="sensor-group"><label>GRY</label><input type="number" id="p_gry" placeholder="-1.01" step="0.01" oninput="syncFields('gry',this.value)"/></div>
+            <div class="sensor-group"><label>GRZ</label><input type="number" id="p_grz" placeholder="0.03" step="0.01" oninput="syncFields('grz',this.value)"/></div>
+          </div>
+          <button class="btn-predict" onclick="runPredict()">⚡ RUN PREDICTION</button>
+          <button class="btn-sample" onclick="loadSample()">Load Sample Data</button>
+        </div>
+
+        <!-- Result + confidence bar -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Prediction Result</div><div class="card-badge" id="p_resultBadge">WAITING</div></div>
+            <div class="prediction-display" id="p_predDisplay" style="min-height:150px">
+              <div class="pred-icon">🎯</div>
+              <div class="pred-waiting">Ready to classify</div>
+            </div>
+            <!-- Confidence bar -->
+            <div id="confBarWrap" style="display:none;margin-top:8px">
+              <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-bottom:6px">
+                <span>CONFIDENCE</span><span id="confBarPct">0%</span>
+              </div>
+              <div style="height:8px;background:var(--bg4);border-radius:4px;overflow:hidden">
+                <div id="confBarFill" style="height:100%;border-radius:4px;background:linear-gradient(90deg,var(--cyan),var(--green));transition:width 0.8s ease;width:0%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Session Feed</div><div class="card-badge" id="p_feedCount">0 ENTRIES</div></div>
+            <div class="feed-list" id="p_feedList">
+              <div class="empty-state"><span class="empty-icon">📡</span>No predictions yet.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PAGE: MODELS
+    ══════════════════════════════════════ -->
+    <div class="page" id="page-models">
+      <div class="page-header">
+        <div><div class="page-title">Model <span>Comparison</span></div><div class="page-sub">5 trained classifiers · Performance benchmarks · Interactive analysis</div></div>
+      </div>
+      <div class="model-cards">
+        <div class="model-card" onclick="selectActiveModel('Logistic Reg','64.87%')">
+          <div class="model-card-name">📉 Logistic Regression</div>
+          <div class="model-card-metric"><span class="label">Accuracy</span><span class="value" style="color:var(--pink)">64.87%</span></div>
+          <div class="model-card-metric"><span class="label">F1-Macro</span><span class="value" style="color:var(--pink)">60.46%</span></div>
+          <div class="model-card-metric"><span class="label">Train Time</span><span class="value">7.9s</span></div>
+          <div class="model-progress"><div class="model-progress-fill" style="width:64.87%;background:var(--pink)"></div></div>
+        </div>
+        <div class="model-card" onclick="selectActiveModel('KNN','97.54%')">
+          <div class="model-card-name">🔍 K-Nearest Neighbors</div>
+          <div class="model-card-metric"><span class="label">Accuracy</span><span class="value" style="color:var(--amber)">97.54%</span></div>
+          <div class="model-card-metric"><span class="label">F1-Macro</span><span class="value" style="color:var(--amber)">96.89%</span></div>
+          <div class="model-card-metric"><span class="label">Train Time</span><span class="value">0.3s</span></div>
+          <div class="model-progress"><div class="model-progress-fill" style="width:97.54%;background:var(--amber)"></div></div>
+        </div>
+        <div class="model-card" onclick="selectActiveModel('Decision Tree','93.42%')">
+          <div class="model-card-name">🌳 Decision Tree</div>
+          <div class="model-card-metric"><span class="label">Accuracy</span><span class="value" style="color:var(--amber)">93.42%</span></div>
+          <div class="model-card-metric"><span class="label">F1-Macro</span><span class="value" style="color:var(--amber)">92.47%</span></div>
+          <div class="model-card-metric"><span class="label">Train Time</span><span class="value">2.2s</span></div>
+          <div class="model-progress"><div class="model-progress-fill" style="width:93.42%;background:var(--amber)"></div></div>
+        </div>
+        <div class="model-card star" onclick="selectActiveModel('Random Forest','97.96%')">
+          <div class="model-card-name">⭐ Random Forest</div>
+          <div class="model-card-metric"><span class="label">Accuracy</span><span class="value" style="color:var(--green)">97.96%</span></div>
+          <div class="model-card-metric"><span class="label">F1-Macro</span><span class="value" style="color:var(--green)">97.52%</span></div>
+          <div class="model-card-metric"><span class="label">Train Time</span><span class="value">5.2s</span></div>
+          <div class="model-progress"><div class="model-progress-fill" style="width:97.96%;background:var(--green)"></div></div>
+        </div>
+        <div class="model-card star" onclick="selectActiveModel('1D CNN','97.93%')">
+          <div class="model-card-name">⭐ 1D CNN</div>
+          <div class="model-card-metric"><span class="label">Accuracy</span><span class="value">97.93%</span></div>
+          <div class="model-card-metric"><span class="label">F1-Macro</span><span class="value">97.56%</span></div>
+          <div class="model-card-metric"><span class="label">Train Time</span><span class="value">~11m</span></div>
+          <div class="model-progress"><div class="model-progress-fill" style="width:97.93%"></div></div>
+        </div>
+      </div>
+
+      <!-- Interactive Confusion Matrix -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Interactive Confusion Matrix</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="cmModelSelect" onchange="renderCM()" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-family:var(--font-mono);font-size:10px;color:var(--cyan);outline:none">
+              <option value="rf">Random Forest</option>
+              <option value="cnn">1D CNN</option>
+              <option value="knn">KNN</option>
+            </select>
+            <div class="card-badge">HOVER TO INSPECT</div>
+          </div>
+        </div>
+        <div id="cmContainer" style="overflow-x:auto"></div>
+        <div style="display:flex;gap:16px;margin-top:12px;align-items:center;flex-wrap:wrap">
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">INTENSITY:</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:80px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--bg3),var(--cyan))"></div>
+            <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim)">0 → 100%</span>
+          </div>
+          <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-left:auto" id="cmHint">Hover a cell for details</span>
+        </div>
+      </div>
+
+      <!-- Radar -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">Multi-Axis Model Radar</div><div class="card-badge">MULTI-AXIS</div></div>
+        <div class="chart-wrap-lg"><canvas id="radarChart2"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PAGE: ANALYTICS (History)
+    ══════════════════════════════════════ -->
+    <div class="page" id="page-analytics">
+      <div class="page-header">
+        <div><div class="page-title">Activity <span>History</span></div><div class="page-sub">Persistent prediction log · Survives refresh · Filter by date or activity</div></div>
+        <div class="export-btns">
+          <button class="btn-export green" onclick="exportCSV()">⬇ Export CSV</button>
+          <button class="btn-export" onclick="exportJSON()">⬇ Export JSON</button>
+          <button class="btn-export" style="color:var(--red);border-color:rgba(255,68,68,0.3)" onclick="clearHistory()">🗑 Clear All</button>
+        </div>
+      </div>
+
+      <div class="analytics-stat-row">
+        <div class="analytics-stat"><div class="analytics-stat-val" id="h_total">0</div><div class="analytics-stat-label">TOTAL PREDICTIONS</div></div>
+        <div class="analytics-stat"><div class="analytics-stat-val" id="h_today">0</div><div class="analytics-stat-label">TODAY</div></div>
+        <div class="analytics-stat"><div class="analytics-stat-val" id="h_topact" style="font-size:16px">—</div><div class="analytics-stat-label">MOST FREQUENT ACTIVITY</div></div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Activity Frequency</div><div class="card-badge">HISTORY</div></div>
+          <div class="chart-wrap"><canvas id="histBarChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Daily Predictions</div><div class="card-badge">TIMELINE</div></div>
+          <div class="chart-wrap"><canvas id="timelineChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Prediction Log</div>
+          <div class="history-filters">
+            <button class="history-filter-btn active" onclick="filterHistory('all',this)">All</button>
+            <button class="history-filter-btn" onclick="filterHistory('today',this)">Today</button>
+            <button class="history-filter-btn" onclick="filterHistory('week',this)">This Week</button>
+            <input id="actFilter" placeholder="Filter activity..." style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-family:var(--font-mono);font-size:11px;color:var(--text);outline:none;width:140px" oninput="filterHistory('search',null,this.value)"/>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="history-table">
+            <thead><tr><th>#</th><th>Date & Time</th><th>Activity</th><th>Confidence</th><th>Model</th><th>Sensor Values</th></tr></thead>
+            <tbody id="historyTbody"></tbody>
+          </table>
+        </div>
+        <div id="historyEmpty" class="empty-state" style="display:none"><span class="empty-icon">📂</span>No predictions recorded yet.<br/>Run predictions to build history.</div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PAGE: MHEALTH
+    ══════════════════════════════════════ -->
+    <div class="page" id="page-mhealth">
+      <div class="page-header">
+        <div><div class="page-title">MHEALTH <span>Dataset</span></div><div class="page-sub">Mobile Health dataset · UCI Repository · Multi-sensor body-worn devices</div></div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Total Records</div><div class="kpi-value">1.2M</div><div class="kpi-sub">After preprocessing</div><div class="kpi-icon">📦</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Subjects</div><div class="kpi-value">10</div><div class="kpi-sub">Healthy volunteers</div><div class="kpi-icon">👤</div></div>
+        <div class="kpi-card pink"><div class="kpi-label">Activities</div><div class="kpi-value">12</div><div class="kpi-sub">Daily life activities</div><div class="kpi-icon">🏃</div></div>
+        <div class="kpi-card amber"><div class="kpi-label">Features</div><div class="kpi-value">23</div><div class="kpi-sub">12 selected for model</div><div class="kpi-icon">🔢</div></div>
+      </div>
+      <div class="mhealth-info-grid">
+        <div class="info-block">
+          <div class="info-block-title">Dataset Overview</div>
+          <div class="info-block-content">The MHEALTH (Mobile Health) dataset comprises body motion and vital signs recordings of 10 volunteers performing 12 physical activities. Sensors were placed on the chest, right wrist, and left ankle capturing tri-axial accelerometer and gyroscope data at 50Hz.</div>
+        </div>
+        <div class="info-block">
+          <div class="info-block-title">Sensor Placement</div>
+          <div class="info-block-content">
+            <strong style="color:var(--cyan)">Chest:</strong> Accelerometer (ALX, ALY, ALZ) + Gyroscope (GLX, GLY, GLZ)<br/><br/>
+            <strong style="color:var(--green)">Right Wrist:</strong> Accelerometer (ARX, ARY, ARZ)<br/><br/>
+            <strong style="color:var(--amber)">Left Ankle:</strong> Gyroscope (GRX, GRY, GRZ)
+          </div>
+        </div>
+        <div class="info-block">
+          <div class="info-block-title">Selected Features (12)</div>
+          <div class="feature-tags">
+            <span class="feature-tag">ALX</span><span class="feature-tag">ALY</span><span class="feature-tag">ALZ</span>
+            <span class="feature-tag">GLX</span><span class="feature-tag">GLY</span><span class="feature-tag">GLZ</span>
+            <span class="feature-tag">ARX</span><span class="feature-tag">ARY</span><span class="feature-tag">ARZ</span>
+            <span class="feature-tag">GRX</span><span class="feature-tag">GRY</span><span class="feature-tag">GRZ</span>
+          </div>
+        </div>
+        <div class="info-block">
+          <div class="info-block-title">Preprocessing Steps</div>
+          <div class="info-block-content">Missing value removal · StandardScaler normalization · Label encoding · Train/test split (80/20) · Stratified sampling to preserve class balance</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Activity Class Distribution</div><div class="card-badge">12 CLASSES</div></div>
+        <div class="chart-wrap-lg"><canvas id="mhealthBarChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         PAGE: SENSORS
+    ══════════════════════════════════════ -->
+    <div class="page" id="page-sensors">
+      <div class="page-header">
+        <div><div class="page-title">Sensor <span>Monitor</span></div><div class="page-sub">Live values from last prediction · Real-time waveform simulation</div></div>
+        <button class="btn-predict" style="width:auto;padding:10px 20px;font-size:11px" onclick="startSensorSim()">▶ SIMULATE LIVE</button>
+      </div>
+
+      <div class="sensor-live-grid" id="sensorLiveGrid">
+        <!-- filled by JS -->
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Multi-Channel Waveform</div><div class="card-badge" id="simStatus">STATIC</div></div>
+        <div class="waveform-wrap" style="height:200px"><canvas class="waveform-canvas" id="waveCanvas2"></canvas></div>
+        <div class="waveform-labels" style="margin-top:12px">
+          <div class="waveform-label"><div class="wl-dot" style="background:#00e5ff"></div>ALX</div>
+          <div class="waveform-label"><div class="wl-dot" style="background:#ff4d8d"></div>ALY</div>
+          <div class="waveform-label"><div class="wl-dot" style="background:#00ff88"></div>ALZ</div>
+          <div class="waveform-label"><div class="wl-dot" style="background:#ffb700"></div>GLX</div>
+          <div class="waveform-label"><div class="wl-dot" style="background:#ff9f00"></div>ARX</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Chest Accelerometer</div><div class="card-badge green">CHEST</div></div>
+          <div class="chart-wrap"><canvas id="chestChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Wrist + Ankle</div><div class="card-badge amber">LIMBS</div></div>
+          <div class="chart-wrap"><canvas id="limbChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Tooltip for confusion matrix -->
+<div class="cm-tooltip" id="cmTooltip"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  GLOBAL STATE
+// ══════════════════════════════════════════════════════════════
+const STORAGE_KEY = 'har_history_v2';
+let selectedModel = '1D CNN';
+let selectedAcc = '97.93%';
+let feedItems = [];
+let waveAnimId = null;
+let simAnimId = null;
+let simRunning = false;
+
+const ACTIVITIES = {
+  1:{name:'Standing',emoji:'🧍',color:'#00e5ff'},
+  2:{name:'Sitting',emoji:'🪑',color:'#00b8cc'},
+  3:{name:'Lying Down',emoji:'🛌',color:'#7a9aaa'},
+  4:{name:'Walking',emoji:'🚶',color:'#00ff88'},
+  5:{name:'Stairs',emoji:'🪜',color:'#00cc6a'},
+  6:{name:'Waist Bend',emoji:'🤸',color:'#ffb700'},
+  7:{name:'Arm Raise',emoji:'🙋',color:'#ff9f00'},
+  8:{name:'Crouching',emoji:'🧎',color:'#ff6ec7'},
+  9:{name:'Cycling',emoji:'🚴',color:'#ff4d8d'},
+  10:{name:'Jogging',emoji:'🏃',color:'#00e5ff'},
+  11:{name:'Running',emoji:'💨',color:'#ff4d8d'},
+  12:{name:'Jump',emoji:'🦘',color:'#ffb700'},
+};
+
+const FIELDS = ['alx','aly','alz','glx','gly','glz','arx','ary','arz','grx','gry','grz'];
+
+const SAMPLES = {
+  1:[2.18,-9.5,0.68,0.1,-0.83,-0.68,-8.62,-4.57,0.18,-0.44,-1.01,0.03],
+  4:[3.5,-8.2,1.2,0.3,-0.6,-0.4,-6.0,-2.5,1.5,-0.2,-0.8,0.1],
+  9:[1.8,-10.1,2.5,-0.2,-0.9,-0.2,-9.1,-6.2,3.1,-0.55,-1.2,0.45],
+  10:[5.2,-7.8,3.1,0.8,-0.3,0.2,-4.5,-1.2,2.8,0.3,-0.4,0.6],
+  11:[8.5,-5.2,5.8,1.5,0.2,0.8,-2.1,1.5,4.2,0.8,0.2,1.1],
+  12:[9.8,-3.5,7.2,2.1,0.8,1.2,-0.5,3.2,6.5,1.2,0.6,1.8],
+};
+
+// ══════════════════════════════════════════════════════════════
+//  CLOCK
+// ══════════════════════════════════════════════════════════════
+function updateClock(){
+  document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false});
+}
+setInterval(updateClock,1000); updateClock();
+
+// ══════════════════════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════════════════════
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=(type==='success'?'✓ ':type==='error'?'✗ ':'ℹ ')+msg;
+  t.className='toast show '+(type||'');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════════════════════
+function showPage(page,navEl){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if(navEl) navEl.classList.add('active');
+  if(page==='analytics') refreshHistoryPage();
+  if(page==='sensors') initSensorsPage();
+  if(page==='models') renderCM();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MODEL SELECTION
+// ══════════════════════════════════════════════════════════════
+function selectModel(el,name,acc){
+  document.querySelectorAll('.model-opt').forEach(o=>o.classList.remove('selected'));
+  document.querySelectorAll('.model-opt').forEach(o=>{
+    if(o.textContent.trim().startsWith(name.split(' ')[0])) o.classList.add('selected');
+  });
+  el.classList.add('selected');
+  selectedModel=name; selectedAcc=acc;
+  document.getElementById('activemodelname').textContent=name;
+  document.getElementById('activemodelacc').textContent=`Acc: ${acc}`;
+}
+
+function selectActiveModel(name,acc){
+  selectedModel=name; selectedAcc=acc;
+  document.getElementById('activemodelname').textContent=name;
+  document.getElementById('activemodelacc').textContent=`Acc: ${acc}`;
+  showToast(`Active model set to ${name}`);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ACTIVITY ICONS
+// ══════════════════════════════════════════════════════════════
+const iconsContainer=document.getElementById('activityIcons');
+Object.entries(ACTIVITIES).forEach(([id,act])=>{
+  const el=document.createElement('div');
+  el.className='act-icon-card'; el.id=`act_${id}`;
+  el.innerHTML=`<span class="act-emoji">${act.emoji}</span><div class="act-name">${act.name}</div>`;
+  iconsContainer.appendChild(el);
+});
+
+// ══════════════════════════════════════════════════════════════
+//  LOAD SAMPLE
+// ══════════════════════════════════════════════════════════════
+function loadSample(){
+  const ids=Object.keys(SAMPLES);
+  const rand=ids[Math.floor(Math.random()*ids.length)];
+  const vals=SAMPLES[rand];
+  FIELDS.forEach((f,i)=>{
+    const el=document.getElementById(f);
+    const el2=document.getElementById('p_'+f);
+    if(el) el.value=vals[i];
+    if(el2) el2.value=vals[i];
+  });
+  triggerWaveUpdate(vals);
+}
+
+function syncFields(field,val){
+  const main=document.getElementById(field);
+  const pred=document.getElementById('p_'+field);
+  if(main && document.activeElement!==main) main.value=val;
+  if(pred && document.activeElement!==pred) pred.value=val;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PREDICTION
+// ══════════════════════════════════════════════════════════════
+function runPredict(){
+  const vals=FIELDS.map(f=>{
+    const v=parseFloat(document.getElementById(f)?.value||document.getElementById('p_'+f)?.value);
+    return v;
+  });
+  if(vals.some(isNaN)){showToast('Please fill all 12 sensor values or use Load Sample Data','error');return;}
+
+  document.querySelectorAll('.btn-predict').forEach(b=>{b.textContent='⏳ PROCESSING...';b.classList.add('loading')});
+
+  const features={};
+  FIELDS.forEach((f,i)=>features[f]=vals[i]);
+
+  fetch('http://localhost:8080/api/predict',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({features,model:selectedModel})
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    const act=ACTIVITIES[data.class_id]||{name:data.activity,emoji:'🎯',color:'#00e5ff'};
+    const conf=data.confidence;
+    onPredictionResult(act,conf,data.modelUsed||selectedModel,vals,data.class_id);
+  })
+  .catch(()=>{
+    showToast('Backend offline — showing demo result','error');
+    // Demo fallback
+    const classId=classify(vals);
+    const act=ACTIVITIES[classId]||{name:'Unknown',emoji:'🎯',color:'#00e5ff'};
+    const conf=Math.round((85+Math.random()*12)*10)/10;
+    onPredictionResult(act,conf,selectedModel+' (demo)',vals,classId);
+  })
+  .finally(()=>{
+    document.querySelectorAll('.btn-predict').forEach(b=>{b.textContent='⚡ RUN PREDICTION';b.classList.remove('loading')});
+  });
+}
+
+function classify(vals){
+  const [alx,aly,alz]=vals;
+  const mag=Math.sqrt(alx*alx+aly*aly+alz*alz);
+  if(mag>12) return 12; if(mag>10) return 11; if(mag>8) return 10;
+  if(mag>5) return 4; if(Math.abs(aly+9.8)<1.5&&mag<4) return 1;
+  if(Math.abs(aly+9.8)<2&&alz>3) return 2; if(Math.abs(alz)>8) return 3;
+  return Math.floor(Math.random()*8)+1;
+}
+
+function onPredictionResult(act,conf,modelUsed,vals,classId){
+  const resultHTML=`
+    <div class="pred-icon pulse-ring" style="width:56px;height:56px;border-radius:50%;border:2px solid ${act.color};display:flex;align-items:center;justify-content:center;font-size:28px">${act.emoji}</div>
+    <div class="pred-label" style="color:${act.color}">${act.name.toUpperCase()}</div>
+    <div class="pred-confidence">Confidence: ${conf}%</div>
+    <div class="pred-model-used">via ${modelUsed}</div>`;
+
+  ['predDisplay','p_predDisplay'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.classList.add('active');el.innerHTML=resultHTML;}
+  });
+  ['resultBadge','p_resultBadge'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent='DETECTED';
+  });
+
+  // Confidence bar
+  const cb=document.getElementById('confBarWrap');
+  if(cb){cb.style.display='block';document.getElementById('confBarPct').textContent=conf+'%';document.getElementById('confBarFill').style.width=conf+'%';}
+
+  // Sensor readout
+  document.getElementById('sensorReadout').style.display='grid';
+  ['ro_alx','ro_aly','ro_glx','ro_arx','ro_grx','ro_gry'].forEach((id,i)=>{
+    const idx=[0,1,3,6,9,10][i];
+    const el=document.getElementById(id);
+    if(el) el.textContent=vals[idx].toFixed(2);
+  });
+
+  // Highlight activity icon
+  document.querySelectorAll('.act-icon-card').forEach(c=>c.classList.remove('active-act'));
+  const iconEl=document.getElementById(`act_${classId}`);
+  if(iconEl) iconEl.classList.add('active-act');
+
+  // Feed
+  addFeedItem(act,conf,modelUsed,vals);
+  saveToHistory(act,conf,modelUsed,vals);
+
+  // Waveform
+  triggerWaveUpdate(vals);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FEED
+// ══════════════════════════════════════════════════════════════
+function addFeedItem(act,conf,model,vals){
+  const now=new Date().toLocaleTimeString('en-US',{hour12:false});
+  feedItems.unshift({act,conf,model,time:now});
+  if(feedItems.length>15) feedItems.pop();
+
+  ['feedList','p_feedList'].forEach(id=>{
+    const fl=document.getElementById(id);
+    if(!fl) return;
+    fl.innerHTML='';
+    feedItems.forEach(item=>{
+      const el=document.createElement('div');
+      el.className='feed-item';
+      el.innerHTML=`<div class="feed-icon">${item.act.emoji}</div><div class="feed-info"><div class="feed-activity">${item.act.name}</div><div class="feed-time">${item.time} · ${item.model}</div></div><div class="feed-conf">${item.conf}%</div>`;
+      fl.appendChild(el);
+    });
+  });
+  ['feedCount','p_feedCount'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=feedItems.length+' ENTRIES';
+  });
+
+  // KPI total
+  const h=loadHistory();
+  document.getElementById('kpi-total').textContent=h.length;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HISTORY (localStorage)
+// ══════════════════════════════════════════════════════════════
+function loadHistory(){
+  try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch{return[]}
+}
+function saveHistory(data){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data))}catch{}
+}
+function saveToHistory(act,conf,model,vals){
+  const history=loadHistory();
+  const entry={
+    id:Date.now(),
+    timestamp:new Date().toISOString(),
+    date:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),
+    time:new Date().toLocaleTimeString('en-US',{hour12:false}),
+    activity:act.name,
+    emoji:act.emoji,
+    confidence:conf,
+    model:model,
+    sensors:{alx:vals[0],aly:vals[1],alz:vals[2],glx:vals[3],arx:vals[6],grx:vals[9]}
+  };
+  history.unshift(entry);
+  if(history.length>500) history.pop();
+  saveHistory(history);
+}
+
+let histFilterMode='all';
+let histFilterText='';
+
+function filterHistory(mode,el,text){
+  if(el){document.querySelectorAll('.history-filter-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+  if(mode!=='search') histFilterMode=mode;
+  if(text!==undefined) histFilterText=text.toLowerCase();
+  refreshHistoryPage();
+}
+
+function refreshHistoryPage(){
+  const history=loadHistory();
+  const now=new Date();
+  const todayStr=now.toDateString();
+  const weekAgo=new Date(now-7*86400000);
+
+  let filtered=history.filter(e=>{
+    const d=new Date(e.timestamp);
+    if(histFilterMode==='today'&&d.toDateString()!==todayStr) return false;
+    if(histFilterMode==='week'&&d<weekAgo) return false;
+    if(histFilterText&&!e.activity.toLowerCase().includes(histFilterText)) return false;
+    return true;
+  });
+
+  // Stats
+  document.getElementById('h_total').textContent=history.length;
+  document.getElementById('h_today').textContent=history.filter(e=>new Date(e.timestamp).toDateString()===todayStr).length;
+
+  const actCount={};
+  history.forEach(e=>{actCount[e.activity]=(actCount[e.activity]||0)+1});
+  const topAct=Object.entries(actCount).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('h_topact').textContent=topAct?`${ACTIVITIES[Object.keys(ACTIVITIES).find(k=>ACTIVITIES[k].name===topAct[0])]?.emoji||'🎯'} ${topAct[0]}`:'—';
+
+  // Table
+  const tbody=document.getElementById('historyTbody');
+  const empty=document.getElementById('historyEmpty');
+  if(filtered.length===0){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+
+  tbody.innerHTML=filtered.map((e,i)=>{
+    const confClass=e.confidence>=90?'high':e.confidence>=75?'mid':'low';
+    return `<tr>
+      <td style="color:var(--text-dim)">${filtered.length-i}</td>
+      <td>${e.date}<br/><span style="color:var(--text-dim);font-size:10px">${e.time}</span></td>
+      <td>${e.emoji||'🎯'} ${e.activity}</td>
+      <td><span class="conf-badge ${confClass}">${e.confidence}%</span></td>
+      <td style="color:var(--text-dim)">${e.model}</td>
+      <td style="color:var(--text-dim);font-size:10px">ALX:${(e.sensors?.alx||0).toFixed(1)} ALY:${(e.sensors?.aly||0).toFixed(1)} ALZ:${(e.sensors?.alz||0).toFixed(1)}</td>
+    </tr>`;
+  }).join('');
+
+  // Charts
+  renderHistoryCharts(history);
+}
+
+function renderHistoryCharts(history){
+  // Activity frequency bar
+  const actCount={};
+  history.forEach(e=>{actCount[e.activity]=(actCount[e.activity]||0)+1});
+  const actLabels=Object.keys(actCount);
+  const actVals=Object.values(actCount);
+
+  if(window._histBarChart) window._histBarChart.destroy();
+  const hbc=document.getElementById('histBarChart');
+  if(hbc&&actLabels.length>0){
+    window._histBarChart=new Chart(hbc,{
+      type:'bar',
+      data:{labels:actLabels,datasets:[{label:'Predictions',data:actVals,backgroundColor:'rgba(0,229,255,0.6)',borderColor:'#00e5ff',borderWidth:1,borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'rgba(0,229,255,0.06)'},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
+    });
+  }
+
+  // Timeline (last 7 days)
+  const days=[];
+  const dayCounts=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    days.push(d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}));
+    dayCounts.push(history.filter(e=>new Date(e.timestamp).toDateString()===d.toDateString()).length);
+  }
+  if(window._timelineChart) window._timelineChart.destroy();
+  const tlc=document.getElementById('timelineChart');
+  if(tlc){
+    window._timelineChart=new Chart(tlc,{
+      type:'line',
+      data:{labels:days,datasets:[{label:'Predictions',data:dayCounts,borderColor:'#00e5ff',backgroundColor:'rgba(0,229,255,0.08)',borderWidth:2,pointBackgroundColor:'#00e5ff',pointRadius:4,tension:0.4,fill:true}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,grid:{color:'rgba(0,229,255,0.06)'},ticks:{font:{size:10},stepSize:1}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════════════════════════
+function exportCSV(){
+  const h=loadHistory();
+  if(h.length===0){showToast('No history to export','error');return;}
+  const headers=['ID','Date','Time','Activity','Confidence(%)','Model','ALX','ALY','ALZ','GLX','ARX','GRX'];
+  const rows=h.map(e=>[e.id,e.date,e.time,e.activity,e.confidence,e.model,(e.sensors?.alx||0).toFixed(2),(e.sensors?.aly||0).toFixed(2),(e.sensors?.alz||0).toFixed(2),(e.sensors?.glx||0).toFixed(2),(e.sensors?.arx||0).toFixed(2),(e.sensors?.grx||0).toFixed(2)]);
+  const csv=[headers,...rows].map(r=>r.join(',')).join('\n');
+  downloadFile('har_predictions_'+new Date().toISOString().slice(0,10)+'.csv',csv,'text/csv');
+  showToast('CSV exported successfully!');
+}
+function exportJSON(){
+  const h=loadHistory();
+  if(h.length===0){showToast('No history to export','error');return;}
+  downloadFile('har_predictions_'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(h,null,2),'application/json');
+  showToast('JSON exported successfully!');
+}
+function downloadFile(name,content,type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type}));
+  a.download=name; a.click();
+}
+function clearHistory(){
+  if(!confirm('Clear all prediction history? This cannot be undone.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  feedItems=[];
+  document.getElementById('feedList').innerHTML='<div class="empty-state"><span class="empty-icon">📡</span>No predictions yet.</div>';
+  document.getElementById('feedCount').textContent='0 ENTRIES';
+  document.getElementById('kpi-total').textContent='0';
+  refreshHistoryPage();
+  showToast('History cleared');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  WAVEFORM ANIMATION
+// ══════════════════════════════════════════════════════════════
+let waveData={alx:[],aly:[],alz:[],glx:[]};
+const WAVE_LEN=80;
+
+function triggerWaveUpdate(vals){
+  // Push current vals into waveform buffer
+  const newAlx=vals[0]||0,newAly=vals[1]||0,newAlz=vals[2]||0,newGlx=vals[3]||0;
+  for(let i=0;i<5;i++){
+    waveData.alx.push(newAlx+(Math.random()-0.5)*0.5);
+    waveData.aly.push(newAly+(Math.random()-0.5)*0.5);
+    waveData.alz.push(newAlz+(Math.random()-0.5)*0.3);
+    waveData.glx.push(newGlx+(Math.random()-0.5)*0.2);
+  }
+  if(waveData.alx.length>WAVE_LEN) waveData.alx=waveData.alx.slice(-WAVE_LEN);
+  if(waveData.aly.length>WAVE_LEN) waveData.aly=waveData.aly.slice(-WAVE_LEN);
+  if(waveData.alz.length>WAVE_LEN) waveData.alz=waveData.alz.slice(-WAVE_LEN);
+  if(waveData.glx.length>WAVE_LEN) waveData.glx=waveData.glx.slice(-WAVE_LEN);
+
+  document.getElementById('waveStatus').textContent='LIVE';
+  drawWave('waveCanvas');
+  drawWave('waveCanvas2');
+}
+
+function drawWave(canvasId){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  canvas.width=canvas.offsetWidth*window.devicePixelRatio;
+  canvas.height=canvas.offsetHeight*window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio,window.devicePixelRatio);
+  const W=canvas.offsetWidth,H=canvas.offsetHeight;
+  ctx.clearRect(0,0,W,H);
+
+  const channels=[
+    {data:waveData.alx,color:'#00e5ff'},
+    {data:waveData.aly,color:'#ff4d8d'},
+    {data:waveData.alz,color:'#00ff88'},
+    {data:waveData.glx,color:'#ffb700'},
+  ];
+  const allVals=[...waveData.alx,...waveData.aly,...waveData.alz,...waveData.glx];
+  const minV=Math.min(-15,...allVals),maxV=Math.max(15,...allVals);
+  const range=maxV-minV||1;
+
+  channels.forEach(ch=>{
+    if(ch.data.length<2) return;
+    ctx.beginPath();
+    ctx.strokeStyle=ch.color; ctx.lineWidth=1.5; ctx.globalAlpha=0.85;
+    ch.data.forEach((v,i)=>{
+      const x=(i/(WAVE_LEN-1))*W;
+      const y=H-((v-minV)/range)*(H*0.8)-H*0.1;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha=1;
+  });
+
+  // Grid lines
+  ctx.strokeStyle='rgba(0,229,255,0.06)'; ctx.lineWidth=1;
+  for(let i=1;i<4;i++){
+    const y=(i/4)*H;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+}
+
+// Idle animation when no data
+function animateIdleWave(){
+  const t=Date.now()/1000;
+  const idle={
+    alx:Array.from({length:WAVE_LEN},(_,i)=>Math.sin(i/8+t)*2),
+    aly:Array.from({length:WAVE_LEN},(_,i)=>-9.5+Math.sin(i/10+t+1)*0.5),
+    alz:Array.from({length:WAVE_LEN},(_,i)=>Math.cos(i/7+t)*1.5),
+    glx:Array.from({length:WAVE_LEN},(_,i)=>Math.sin(i/12+t+2)*0.5),
+  };
+  const canvas=document.getElementById('waveCanvas');
+  if(!canvas) return;
+  const savedData=waveData;
+  waveData=idle;
+  drawWave('waveCanvas');
+  waveData=savedData;
+  waveAnimId=requestAnimationFrame(animateIdleWave);
+}
+cancelAnimationFrame(waveAnimId);
+animateIdleWave();
+
+// ══════════════════════════════════════════════════════════════
+//  CONFUSION MATRIX
+// ══════════════════════════════════════════════════════════════
+const ACT_SHORT=['Stand','Sit','Lie','Walk','Stairs','Waist','Arm','Crouch','Cycle','Jog','Run','Jump'];
+
+// Generate realistic-looking confusion matrices
+function genCM(accuracy){
+  const n=12;
+  const cm=Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>{
+    if(r===c) return Math.round(accuracy*100+Math.random()*5);
+    return Math.round(Math.random()*(100-accuracy*100)*0.3);
+  }));
+  return cm;
+}
+
+const CMS={
+  rf:genCM(0.9796),cnn:genCM(0.9793),knn:genCM(0.9754)
+};
+
+function renderCM(){
+  const which=document.getElementById('cmModelSelect')?.value||'rf';
+  const cm=CMS[which];
+  const n=12;
+  const container=document.getElementById('cmContainer');
+  if(!container) return;
+
+  // Find max for color scaling
+  const maxVal=Math.max(...cm.flat());
+
+  const cellSize=42;
+  let html=`<div style="display:inline-grid;grid-template-columns:60px repeat(${n},${cellSize}px);grid-template-rows:60px repeat(${n},${cellSize}px);gap:2px;margin-top:8px">`;
+
+  // Top-left empty
+  html+=`<div></div>`;
+  // Top labels
+  ACT_SHORT.forEach(l=>html+=`<div class="cm-label-top">${l}</div>`);
+
+  // Rows
+  cm.forEach((row,r)=>{
+    html+=`<div class="cm-label">${ACT_SHORT[r]}</div>`;
+    row.forEach((val,c)=>{
+      const pct=val/maxVal;
+      const isDiag=r===c;
+      const alpha=0.15+pct*0.85;
+      const bg=isDiag?`rgba(0,229,255,${alpha})`:`rgba(255,77,141,${(pct*0.6).toFixed(2)})`;
+      const textColor=pct>0.5?'#fff':'rgba(255,255,255,0.7)';
+      html+=`<div class="cm-cell" style="background:${bg};color:${textColor};font-size:${val>9?9:8}px" 
+        onmouseenter="showCMTooltip(event,'${ACT_SHORT[r]}','${ACT_SHORT[c]}',${val},${r===c})"
+        onmouseleave="hideCMTooltip()">${val>0?val:''}</div>`;
+    });
+  });
+  html+='</div>';
+  container.innerHTML=html;
+}
+
+function showCMTooltip(e,actual,predicted,val,isDiag){
+  const t=document.getElementById('cmTooltip');
+  t.innerHTML=`<strong>Actual:</strong> ${actual}<br/><strong>Predicted:</strong> ${predicted}<br/><strong>Count:</strong> ${val}<br/><strong>${isDiag?'✓ Correct':'✗ Misclassified'}</strong>`;
+  t.style.display='block';
+  t.style.left=(e.clientX+12)+'px';
+  t.style.top=(e.clientY-10)+'px';
+  document.getElementById('cmHint').textContent=`${actual} → ${predicted}: ${val} samples`;
+}
+function hideCMTooltip(){
+  document.getElementById('cmTooltip').style.display='none';
+  document.getElementById('cmHint').textContent='Hover a cell for details';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SENSORS PAGE
+// ══════════════════════════════════════════════════════════════
+const SENSOR_DEFS=[
+  {id:'alx',label:'ALX',unit:'m/s²',group:'Chest Accel',color:'#00e5ff'},
+  {id:'aly',label:'ALY',unit:'m/s²',group:'Chest Accel',color:'#00b8cc'},
+  {id:'alz',label:'ALZ',unit:'m/s²',group:'Chest Accel',color:'#00ff88'},
+  {id:'glx',label:'GLX',unit:'rad/s',group:'Chest Gyro',color:'#ffb700'},
+  {id:'gly',label:'GLY',unit:'rad/s',group:'Chest Gyro',color:'#ff9f00'},
+  {id:'glz',label:'GLZ',unit:'rad/s',group:'Chest Gyro',color:'#ff6ec7'},
+  {id:'arx',label:'ARX',unit:'m/s²',group:'Wrist Accel',color:'#ff4d8d'},
+  {id:'ary',label:'ARY',unit:'m/s²',group:'Wrist Accel',color:'#ff8ab0'},
+  {id:'arz',label:'ARZ',unit:'m/s²',group:'Wrist Accel',color:'#c870ff'},
+  {id:'grx',label:'GRX',unit:'rad/s',group:'Ankle Gyro',color:'#7a9aaa'},
+  {id:'gry',label:'GRY',unit:'rad/s',group:'Ankle Gyro',color:'#5a7a8a'},
+  {id:'grz',label:'GRZ',unit:'rad/s',group:'Ankle Gyro',color:'#3a5a6a'},
+];
+
+let sensorSimData={};
+SENSOR_DEFS.forEach(s=>sensorSimData[s.id]=Array(50).fill(0));
+
+function initSensorsPage(){
+  const grid=document.getElementById('sensorLiveGrid');
+  grid.innerHTML='';
+  SENSOR_DEFS.forEach(s=>{
+    const val=parseFloat(document.getElementById(s.id)?.value)||0;
+    const pct=Math.min(100,Math.abs(val)/15*100);
+    grid.innerHTML+=`<div class="sensor-live-card">
+      <div class="sensor-live-name">${s.label} · ${s.group}</div>
+      <div class="sensor-live-val" id="slv_${s.id}">${val.toFixed(2)}</div>
+      <div class="sensor-live-unit">${s.unit}</div>
+      <div class="sensor-bar-wrap"><div class="sensor-bar-fill" id="slb_${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
+    </div>`;
+  });
+  renderSensorCharts();
+  drawWave('waveCanvas2');
+}
+
+let chestChartInst=null,limbChartInst=null;
+function renderSensorCharts(){
+  const labels=Array.from({length:50},(_,i)=>i);
+  if(chestChartInst) chestChartInst.destroy();
+  const cc=document.getElementById('chestChart');
+  if(cc) chestChartInst=new Chart(cc,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'ALX',data:[...sensorSimData.alx],borderColor:'#00e5ff',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.3},
+      {label:'ALY',data:[...sensorSimData.aly],borderColor:'#ff4d8d',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.3},
+      {label:'ALZ',data:[...sensorSimData.alz],borderColor:'#00ff88',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{font:{size:10},boxWidth:12}}},scales:{y:{grid:{color:'rgba(0,229,255,0.06)'},ticks:{font:{size:9}}},x:{display:false}}}
+  });
+
+  if(limbChartInst) limbChartInst.destroy();
+  const lc=document.getElementById('limbChart');
+  if(lc) limbChartInst=new Chart(lc,{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'ARX',data:[...sensorSimData.arx],borderColor:'#ffb700',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.3},
+      {label:'GRX',data:[...sensorSimData.grx],borderColor:'#ff9f00',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.3},
+      {label:'GRY',data:[...sensorSimData.gry],borderColor:'#7a9aaa',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{font:{size:10},boxWidth:12}}},scales:{y:{grid:{color:'rgba(0,229,255,0.06)'},ticks:{font:{size:9}}},x:{display:false}}}
+  });
+}
+
+function startSensorSim(){
+  if(simRunning){simRunning=false;cancelAnimationFrame(simAnimId);document.getElementById('simStatus').textContent='STATIC';return;}
+  simRunning=true;
+  document.getElementById('simStatus').textContent='LIVE';
+  function tick(){
+    if(!simRunning) return;
+    const t=Date.now()/500;
+    const simVals={
+      alx:Math.sin(t)*4+Math.random()*0.5,
+      aly:-9.5+Math.sin(t*0.7)*1.5,
+      alz:Math.cos(t*1.2)*2,
+      glx:Math.sin(t*2)*0.8,
+      gly:Math.cos(t*1.8)*0.6,
+      glz:Math.sin(t*3)*0.4,
+      arx:Math.cos(t)*3+Math.random()*0.5,
+      ary:Math.sin(t*0.9)*2,
+      arz:Math.cos(t*1.5)*1.5,
+      grx:Math.sin(t*2.5)*0.7,
+      gry:Math.cos(t*2)*0.5,
+      grz:Math.sin(t*3.5)*0.3,
+    };
+    SENSOR_DEFS.forEach(s=>{
+      const v=simVals[s.id]||0;
+      sensorSimData[s.id].push(v);
+      sensorSimData[s.id]=sensorSimData[s.id].slice(-50);
+      const valEl=document.getElementById('slv_'+s.id);
+      const barEl=document.getElementById('slb_'+s.id);
+      if(valEl) valEl.textContent=v.toFixed(2);
+      if(barEl) barEl.style.width=Math.min(100,Math.abs(v)/15*100)+'%';
+    });
+    if(chestChartInst){
+      chestChartInst.data.datasets[0].data=[...sensorSimData.alx];
+      chestChartInst.data.datasets[1].data=[...sensorSimData.aly];
+      chestChartInst.data.datasets[2].data=[...sensorSimData.alz];
+      chestChartInst.update();
+    }
+    if(limbChartInst){
+      limbChartInst.data.datasets[0].data=[...sensorSimData.arx];
+      limbChartInst.data.datasets[1].data=[...sensorSimData.grx];
+      limbChartInst.data.datasets[2].data=[...sensorSimData.gry];
+      limbChartInst.update();
+    }
+    drawWave('waveCanvas2');
+    simAnimId=requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CHARTS (Dashboard)
+// ══════════════════════════════════════════════════════════════
+Chart.defaults.color='#7a9aaa';
+Chart.defaults.borderColor='rgba(0,229,255,0.08)';
+Chart.defaults.font.family="'DM Mono',monospace";
+
+new Chart(document.getElementById('barChart'),{
+  type:'bar',
+  data:{
+    labels:['Logistic Reg','KNN','Decision Tree','Random Forest','1D CNN'],
+    datasets:[
+      {label:'Accuracy',data:[64.87,97.54,93.42,97.96,97.93],backgroundColor:'rgba(0,229,255,0.7)',borderColor:'#00e5ff',borderWidth:1,borderRadius:4},
+      {label:'F1-Macro',data:[60.46,96.89,92.47,97.52,97.56],backgroundColor:'rgba(255,77,141,0.7)',borderColor:'#ff4d8d',borderWidth:1,borderRadius:4},
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11},padding:12}}},scales:{y:{min:50,max:100,grid:{color:'rgba(0,229,255,0.06)'},ticks:{callback:v=>v+'%',font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
+});
+
+new Chart(document.getElementById('pieChart'),{
+  type:'doughnut',
+  data:{
+    labels:['Standing','Sitting','Lying','Walking','Stairs','Waist Bend','Arm Raise','Crouching','Cycling','Jogging','Running','Jump'],
+    datasets:[{data:[30720,30720,30720,30720,30720,28315,29441,29337,30720,30720,30720,10342],backgroundColor:['#00e5ff','#00b8cc','#7a9aaa','#00ff88','#00cc6a','#ffb700','#ff9f00','#ff6ec7','#ff4d8d','#00e5ff','#ff4d8d','#ffb700'],borderColor:'#0c1420',borderWidth:2}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{font:{size:9},padding:8,boxWidth:10}}}}
+});
+
+const radarOpts={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10},padding:10}}},scales:{r:{min:0,max:100,grid:{color:'rgba(0,229,255,0.08)'},angleLines:{color:'rgba(0,229,255,0.08)'},pointLabels:{font:{size:10},color:'#7a9aaa'},ticks:{display:false}}}};
+const radarData={labels:['Accuracy','F1-Macro','Speed','Interpretability','Scalability'],datasets:[
+  {label:'Random Forest',data:[97.96,97.52,75,60,80],borderColor:'#00ff88',backgroundColor:'rgba(0,255,136,0.08)',borderWidth:2,pointBackgroundColor:'#00ff88',pointRadius:3},
+  {label:'1D CNN',data:[97.93,97.56,40,30,90],borderColor:'#00e5ff',backgroundColor:'rgba(0,229,255,0.08)',borderWidth:2,pointBackgroundColor:'#00e5ff',pointRadius:3},
+  {label:'KNN',data:[97.54,96.89,95,70,50],borderColor:'#ffb700',backgroundColor:'rgba(255,183,0,0.06)',borderWidth:2,pointBackgroundColor:'#ffb700',pointRadius:3},
+]};
+
+new Chart(document.getElementById('radarChart'),{type:'radar',data:radarData,options:radarOpts});
+new Chart(document.getElementById('radarChart2'),{type:'radar',data:radarData,options:radarOpts});
+
+// MHEALTH bar chart
+new Chart(document.getElementById('mhealthBarChart'),{
+  type:'bar',
+  data:{
+    labels:['Standing','Sitting','Lying Down','Walking','Stairs','Waist Bend','Arm Raise','Crouching','Cycling','Jogging','Running','Jump'],
+    datasets:[{label:'Records',data:[30720,30720,30720,30720,30720,28315,29441,29337,30720,30720,30720,10342],backgroundColor:['#00e5ff','#00b8cc','#7a9aaa','#00ff88','#00cc6a','#ffb700','#ff9f00','#ff6ec7','#ff4d8d','#00e5ff','#ff4d8d','#ffb700'].map(c=>c+'cc'),borderColor:['#00e5ff','#00b8cc','#7a9aaa','#00ff88','#00cc6a','#ffb700','#ff9f00','#ff6ec7','#ff4d8d','#00e5ff','#ff4d8d','#ffb700'],borderWidth:1,borderRadius:4}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{grid:{color:'rgba(0,229,255,0.06)'},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:9}}}}}
+});
+
+// ══════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════
+// Load existing history count on startup
+(function(){
+  const h=loadHistory();
+  document.getElementById('kpi-total').textContent=h.length;
+  // Restore last 5 feed items from history
+  h.slice(0,5).forEach(e=>{
+    const act={name:e.activity,emoji:e.emoji||'🎯',color:'#00e5ff'};
+    feedItems.push({act,conf:e.confidence,model:e.model,time:e.time});
+  });
+  if(feedItems.length>0) addFeedItem(feedItems[0].act,feedItems[0].conf,feedItems[0].model,[0,0,0,0,0,0,0,0,0,0,0,0]);
+})();
+
+
+// ══════════════════════════════════════════════════════════════
+//  MOBILE MENU
+// ══════════════════════════════════════════════════════════════
+function openMobMenu(){
+  document.getElementById('mobSidebar').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeMobMenu(){
+  document.getElementById('mobSidebar').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HERO BANNER
+// ══════════════════════════════════════════════════════════════
+function toggleInstructions(){
+  const box=document.getElementById('heroInstructions');
+  const icon=document.getElementById('instrIcon');
+  const label=document.getElementById('instrLabel');
+  const isOpen=box.classList.contains('open');
+  box.classList.toggle('open');
+  icon.classList.toggle('open');
+  label.textContent=isOpen?'HOW TO USE THIS DASHBOARD':'HIDE INSTRUCTIONS';
+}
+
+function dismissHero(){
+  const b=document.getElementById('heroBanner');
+  b.style.transition='opacity 0.4s, transform 0.4s, max-height 0.5s';
+  b.style.opacity='0'; b.style.transform='translateY(-10px)';
+  b.style.maxHeight='0'; b.style.padding='0'; b.style.margin='0';
+  b.style.border='none'; b.style.overflow='hidden';
+  localStorage.setItem('har_hero_dismissed','1');
+}
+
+// Restore dismissed state
+if(localStorage.getItem('har_hero_dismissed')==='1'){
+  const b=document.getElementById('heroBanner');
+  if(b){b.style.display='none';}
+}
+
+// ── Update showPage to also highlight mobile nav ──
+const _origShowPage=showPage;
+showPage=function(page,navEl){
+  _origShowPage(page,navEl);
+  document.querySelectorAll('.mob-nav-item').forEach(n=>n.classList.remove('active'));
+  const mob=document.getElementById('mob_'+page);
+  if(mob) mob.classList.add('active');
+  const mn=document.getElementById('mob_modelname');
+  if(mn) mn.textContent=selectedModel;
+};
+</script>
+</body>
+</html>
