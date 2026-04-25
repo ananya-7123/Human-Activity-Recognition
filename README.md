@@ -308,7 +308,7 @@ curl -X POST http://localhost:8080/api/predict \
 
 **Your Name**
 - GitHub: [@ananya-7123](https://github.com/ananya-7123)
-- LinkedIn: [linkedin.com/in/YOUR_PROFILE](https://linkedin.com/in/YOUR_PROFILE)
+- LinkedIn: [linkedin.com/in/YOUR_PROFILE]((https://www.linkedin.com/in/ananya-bhui/))
 
 ---
 
